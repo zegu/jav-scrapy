@@ -2,6 +2,8 @@
 
 一个可以爬取 AV 磁力链接或影片封面的小爬虫。
 
+**仓库迁至 [github](https://github.com/raawaa/jav-scrapy)，此处不再更新。**
+
 ![anim.gif](https://ooo.0o0.ooo/2015/10/31/56345cf140299.gif "anim.gif")
 
 ## Prequisites
