@@ -13,7 +13,7 @@ var mkdirp = require('mkdirp');
 
 // global var
 
-const baseUrl = 'https://www.javbus.me';
+const baseUrl = 'https://www.javbus.com';
 const searchUrl = '/search';
 var pageIndex = 1;
 var currentPageHtml = null;
@@ -21,7 +21,7 @@ var currentPageHtml = null;
 program
   .version('0.6.0')
   .usage('[options]')
-  .option('-p, --parallel <num>', '设置抓取并发连接数，默认值：2', 2)
+  .option('-p, --parallel <num>', '设置抓取并发连接数，默认值：1', 1)
   .option('-t, --timeout <num>', '自定义连接超时时间(毫秒)。默认值：30000毫秒')
   .option('-l, --limit <num>', '设置抓取影片的数量上限，0为抓取全部影片。默认值：0', 0)
   .option('-o, --output <file_path>', '设置磁链和封面抓取结果的保存位置，默认为当前用户的主目录下的 magnets 文件夹', path.join(userHome, 'magnets'))
@@ -38,7 +38,7 @@ var proxy = process.env.http_proxy || program.proxy;
 request = request.defaults({
   timeout: timeout,
   headers: {
-    'Referer': 'http://www.javbus.in',
+    'Referer': 'http://www.javbus.com',
     'Cookie': 'existmag=all'
   }
 });
@@ -268,7 +268,10 @@ function getItemPage(link, index, callback) {
 
 function getItemMagnet(link, meta, done) {
   let fanhao = link.split('/').pop();
-  let itemOutput = output + "/" + fanhao
+  // let itemOutput = output + "/" + fanhao
+  let series = fanhao.split('-')[0]
+  let itemOutput = output + "/" + series
+  // let itemOutput = fanhao.split('-')[0]
   mkdirp.sync(itemOutput);
   let magnetFilePath = path.join(itemOutput, fanhao + '.json');
   fs.access(magnetFilePath, fs.F_OK, function(err) {
@@ -283,47 +286,99 @@ function getItemMagnet(link, meta, done) {
             }
             let $ = cheerio.load(body);
             // 尝试解析高清磁链
-            let HDAnchor = $('a[title="包含高清HD的磁力連結"]').parent().attr('href');
+            let names = [];
+            let HDAnchor = null;
+            let CNAnchor = null;
             // 尝试解析普通磁链
             let anchor = $('a[title="滑鼠右鍵點擊並選擇【複製連結網址】"]').attr('href');
-            // 若存在高清磁链，则优先选取高清磁链
-            anchor = HDAnchor || anchor;
+
+            $('tr').each(function(i, elem){
+                let currentAnchor = $(this).children().first().children().first();
+                let currentAnchorName = currentAnchor.text().trim().toUpperCase();
+                let currentAnchorMagnet = currentAnchor.attr('href');
+
+                if(!HDAnchor && !currentAnchorName.includes('DVD') && !currentAnchorName.includes('ISO')) {
+                    // if(currentAnchorName.includes('THZ.LA') || currentAnchorName.includes('FHD') || currentAnchorName.includes('高清') || currentAnchorName.includes('HD')){
+                    if(currentAnchorName.includes('高清') || currentAnchorName.includes('HD')){
+                        HDAnchor = currentAnchorMagnet
+                    }
+                }
+
+                if(!CNAnchor) {
+                    if(currentAnchorName.includes('字幕')){
+                        CNAnchor = currentAnchorMagnet
+                    }
+                }
+
+                names[i] = {
+                    "name": currentAnchorName,
+                    "magnet": currentAnchorMagnet
+                }
+            });
+
+            console.log(('[' + fanhao + ']').green.bold.inverse + '[磁链]'.yellow.inverse + (HDAnchor ? '[HD]'.blue.bold.inverse : ''), HDAnchor);
+            console.log(('[' + fanhao + ']').green.bold.inverse + '[磁链]'.yellow.inverse + (CNAnchor ? '[CN]'.green.bold.inverse : ''), CNAnchor);
+
+            if(HDAnchor) {
+                anchor = HDAnchor
+            } 
+            if (CNAnchor) {
+                if(!HDAnchor) {
+                    anchor = CNAnchor
+                } else {
+                    anchor = anchor + "\n" + CNAnchor
+                }
+            }
+
+            console.log(('[' + fanhao + ']').green.bold.inverse + '[磁链]'.yellow.inverse + (anchor ? '[FINAL]'.gray.bold.inverse : ''), anchor);
+
+            // let HDAnchor = $('a[title="包含高清HD的磁力連結"]').parent().attr('href');
+
+            // let CNAnchor = $('a[title="包含字幕的磁力連結"]').parent().attr('href');
+            
             // 将磁链单独存入文本文件以方便下载
             if (anchor) {
-              fs.writeFile(path.join(itemOutput, fanhao + '-magnet.txt'), anchor,function(err){
+              // fs.writeFile(path.join(itemOutput, fanhao + '-magnet.txt'), anchor,function(err){
+              //   if (err) {
+              //     throw err;
+              //   }
+              // });
+              let magnetText = meta.title + "\n" + anchor + "\n"
+              fs.appendFile(path.join(itemOutput, series + '-magnet.txt'), magnetText,function(err){
                 if (err) {
                   throw err;
                 }
               });
+
             }
 
             // // 再加上一些影片信息
-            let jsonText = "{\n\t\"title\":\"" + meta.title + "\",\n\t\"date\":\"" + meta.date + "\",\n\t\"series\":\"" + meta.series + "\",\n\t\"anchor\":\"" + anchor + "\",\n\t\"category\":[\n\t\t";
-            for (var i = 0; i < meta.category.length; i++) {
-              jsonText += i == 0 ?  "\"" + meta.category[i] + "\"" : ",\n\t\t\"" + meta.category[i] + "\"";
-            }
-            jsonText += "\n\t],\n\t\"actress\":[\n\t\t";
-            for (var i = 0; i < meta.actress.length; i++) {
-              jsonText += i == 0 ?  "\"" + meta.actress[i] + "\"" : ",\n\t\t\"" + meta.actress[i] + "\"";
-            }
-            jsonText += "\n\t]\n}";
+            // let jsonText = "{\n\t\"title\":\"" + meta.title + "\",\n\t\"date\":\"" + meta.date + "\",\n\t\"series\":\"" + meta.series + "\",\n\t\"anchor\":\"" + anchor + "\",\n\t\"category\":[\n\t\t";
+            // for (var i = 0; i < meta.category.length; i++) {
+            //   jsonText += i == 0 ?  "\"" + meta.category[i] + "\"" : ",\n\t\t\"" + meta.category[i] + "\"";
+            // }
+            // jsonText += "\n\t],\n\t\"actress\":[\n\t\t";
+            // for (var i = 0; i < meta.actress.length; i++) {
+            //   jsonText += i == 0 ?  "\"" + meta.actress[i] + "\"" : ",\n\t\t\"" + meta.actress[i] + "\"";
+            // }
+            // jsonText += "\n\t]\n}";
 
-            if (jsonText) { // magnet file not exists
-              fs.writeFile(magnetFilePath, jsonText + '\r\n',
-                function(err) {
-                  if (err) {
-                    throw err;
-                  }
-                  console.log(('[' + fanhao + ']').green.bold.inverse + '[磁链]'.yellow.inverse + (HDAnchor ? '[HD]'.blue.bold.inverse : ''), anchor);
-                  getItemCover(link, meta, done);
-                });
-            } else {
-              getItemCover(link, meta, done); // 若尚未有磁链则仅抓取封面
-            }
+            // if (jsonText) { // magnet file not exists
+            //   fs.writeFile(magnetFilePath, jsonText + '\r\n',
+            //     function(err) {
+            //       if (err) {
+            //         throw err;
+            //       }
+            //       console.log(('[' + fanhao + ']').green.bold.inverse + '[磁链]'.yellow.inverse + (HDAnchor ? '[HD]'.blue.bold.inverse : ''), anchor);
+            //       getItemCover(link, meta, done);
+            //     });
+            // } else {
+            //   getItemCover(link, meta, done); // 若尚未有磁链则仅抓取封面
+            // }
           });
     } else {
       console.log(('[' + fanhao + ']').green.bold.inverse + '[磁链]'.yellow.inverse, 'file already exists, skip!'.yellow);
-      getItemCover(link, meta, done);
+      // getItemCover(link, meta, done);
     }
   })
 }
@@ -331,7 +386,8 @@ function getItemMagnet(link, meta, done) {
 function getItemCover(link, meta, done) {
   var fanhao = link.split('/').pop();
   var filename = fanhao + 'l.jpg';
-  let itemOutput = output + "/" + fanhao
+  let series = fanhao.split('-')[0]
+  let itemOutput = output + "/" + series
   mkdirp.sync(itemOutput);
   var fileFullPath = path.join(itemOutput, filename);
   fs.access(fileFullPath, fs.F_OK, function(err) {
@@ -371,7 +427,8 @@ function getItemSmallCover(link, meta, done) {
   // https://pics.javbus.info/thumb/5cfb.jpg
   var fanhao = link.split('/').pop();
   var filename = fanhao + 's.jpg';
-  let itemOutput = output + "/" + fanhao
+  let series = fanhao.split('-')[0]
+  let itemOutput = output + "/" + series
   mkdirp.sync(itemOutput);
   var fileFullPath = path.join(itemOutput, filename);
   fs.access(fileFullPath, fs.F_OK, function(err) {
