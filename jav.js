@@ -288,6 +288,7 @@ function getItemMagnet(link, meta, done) {
             // 尝试解析高清磁链
             let names = [];
             let HDAnchor = null;
+            let FHDAnchor = null;
             let CNAnchor = null;
             // 尝试解析普通磁链
             let anchor = $('a[title="滑鼠右鍵點擊並選擇【複製連結網址】"]').attr('href');
@@ -298,10 +299,13 @@ function getItemMagnet(link, meta, done) {
                 let currentAnchorMagnet = currentAnchor.attr('href');
 
                 if(!HDAnchor && !currentAnchorName.includes('DVD') && !currentAnchorName.includes('ISO')) {
-                    // if(currentAnchorName.includes('THZ.LA') || currentAnchorName.includes('FHD') || currentAnchorName.includes('高清') || currentAnchorName.includes('HD')){
                     if(currentAnchorName.includes('高清') || currentAnchorName.includes('HD')){
                         HDAnchor = currentAnchorMagnet
                     }
+                }
+
+                if(currentAnchorName.includes('THZ.LA') || currentAnchorName.includes('FHD') || currentAnchorName.includes('HHB') || currentAnchorName.includes('HHBHD')){
+                    FHDAnchor = currentAnchorMagnet
                 }
 
                 if(!CNAnchor) {
@@ -319,6 +323,7 @@ function getItemMagnet(link, meta, done) {
             console.log(('[' + fanhao + ']').green.bold.inverse + '[磁链]'.yellow.inverse + (HDAnchor ? '[HD]'.blue.bold.inverse : ''), HDAnchor);
             console.log(('[' + fanhao + ']').green.bold.inverse + '[磁链]'.yellow.inverse + (CNAnchor ? '[CN]'.green.bold.inverse : ''), CNAnchor);
 
+            HDAnchor = FHDAnchor || HDAnchor
             if(HDAnchor) {
                 anchor = HDAnchor
             } 
