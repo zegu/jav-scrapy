@@ -354,8 +354,10 @@ function getItemMagnet(link, meta, done) {
                   throw err;
                 }
               });
-              return done(null)
             }
+
+            return done(null)
+
 
             // // 再加上一些影片信息
             // let jsonText = "{\n\t\"title\":\"" + meta.title + "\",\n\t\"date\":\"" + meta.date + "\",\n\t\"series\":\"" + meta.series + "\",\n\t\"anchor\":\"" + anchor + "\",\n\t\"category\":[\n\t\t";
