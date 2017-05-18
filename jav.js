@@ -354,7 +354,7 @@ function getItemMagnet(link, meta, done) {
                   throw err;
                 }
               });
-
+              return done(null)
             }
 
             // // 再加上一些影片信息
